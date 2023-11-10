@@ -7,32 +7,25 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, Dropout, Flatten, Dense, Attention
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
-
 # Load  dataset
 data_path = '/content/drive/MyDrive/a new RNA m6A/m6A all/dataset/main data for merged/100-XGB-Features.csv'
 data = pd.read_csv(data_path)
 
-
 X = data.drop('Target', axis=1).values
 y = data['Target'].values
-
-
 X = X.reshape(X.shape[0], 100, 1)
-
-
-cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-
-
+cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42) #CV=10 splits folds 
 accuracies = []
 specificities = []
 sensitivities = []
-mccs = []
+mccs = []             # list for all res
 kappas = []
 auc_scores = []
 
 for train_index, test_index in cv.split(X, y):
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
+    #--------------------------------------------------------------------------------------------------------
 
     # Build the CNN-Attention model
     cnn_input = Input(shape=(100, 1))
@@ -47,30 +40,18 @@ for train_index, test_index in cv.split(X, y):
     cnn_layer = MaxPooling1D(pool_size=2)(cnn_layer)
     cnn_layer = Dropout(0.5)(cnn_layer)
     cnn_layer = Flatten()(cnn_layer)
-
-    # Attention mechanism
-    attention_layer = Attention()([cnn_layer, cnn_layer])
-
-    # Concatenate CNN and attention outputs
-    combined = tf.keras.layers.concatenate([cnn_layer, attention_layer])
-
-    # Fully connected layers
-    combined = Dense(128, activation='relu')(combined)
+    attention_layer = Attention()([cnn_layer, cnn_layer]) # Attention mechanism
+    combined = tf.keras.layers.concatenate([cnn_layer, attention_layer])# Concatenate CNN and attention outputs
+    combined = Dense(128, activation='relu')(combined)  # Fully connected layers
     output = Dense(1, activation='sigmoid')(combined)
 
-    # Compile the model
     modelca = Model(inputs=cnn_input, outputs=output)
-    modelca .compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=0.001), metrics=['accuracy', AUC()])
-
-    # Train the model
-    modelca .fit(X_train, y_train, epochs=30, batch_size=32, verbose=1)
-
-
-
+    modelca.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=0.001), metrics=['accuracy', AUC()])
+    modelca.fit(X_train, y_train, epochs=30, batch_size=32, verbose=1)
     # Predict on the test set
     y_pred = model.predict(X_test)
     y_pred_classes = np.round(y_pred)
-
+#---------------------------------------------------------------------------------------------------------------------------------------
     # Calculate evaluation metrics
     conf_matrix = confusion_matrix(y_test, y_pred_classes)
     tn, fp, fn, tp = conf_matrix.ravel()
@@ -96,7 +77,7 @@ mean_sensitivity = np.mean(sensitivities)
 mean_mcc = np.mean(mccs)
 mean_kappa = np.mean(kappas)
 mean_auc_score = np.mean(auc_scores)
-# Calculate standard deviations (std) for metrics
+#---------------------------------------------------------Calculate standard deviations
 std_accuracy = np.std(accuracies)
 std_specificity = np.std(specificities)
 std_sensitivity = np.std(sensitivities)
@@ -116,4 +97,21 @@ print("Mean Sensitivity:", mean_sensitivity)
 print("Mean MCC Score:", mean_mcc)
 print("Mean Kappa Score:", mean_kappa)
 print("Mean AUC Score:", mean_auc_score)
+
+
+#---------------------------------------------------------------------
+#Output: 
+#Mean Accuracy: 0.8776641791044775
+#Mean Specificity: 0.9109363184079602
+#Mean Sensitivity: 0.8442696517412935
+#Mean MCC Score: 0.75723397138068976
+#Mean Kappa Score: 0.7552283582089553
+#Mean AUC Score: 0.9526398356476324
+#Std Accuracy: 0.0054726368159204175
+#Std Specificity: 0.001990049751243783
+#Std Sensitivity: 0.012935323383084563
+#Std MCC Score: 0.009918819537644341
+#Std Kappa Score: 0.010945273631840835
+#Std AUC Score: 0.0024538996559491655
+
 
